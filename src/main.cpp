@@ -44,8 +44,7 @@ double polyeval(Eigen::VectorXd coeffs, double x) {
 // Fit a polynomial.
 // Adapted from
 // https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
-                        int order) {
+Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
   assert(xvals.size() == yvals.size());
   assert(order >= 1 && order <= xvals.size() - 1);
   Eigen::MatrixXd A(xvals.size(), order + 1);
@@ -92,6 +91,27 @@ int main() {
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
 
+          // TODO: fit a polynomial to the above x and y coordinates
+          double* pptsx = &ptsx[0];
+          double* pptsy = &ptsy[0];
+
+          Eigen::Map<Eigen::VectorXd> ptx(pptsx,6);
+          Eigen::Map<Eigen::VectorXd> pty(pptsy,6);
+          auto coeffs = polyfit(ptx, pty, 1);
+
+          // TODO: calculate the cross track error
+          // The cross track error is calculated by evaluating at polynomial at x, f(x)
+          // and subtracting y.
+          double cte = polyeval(coeffs, 0) - py;
+
+          // TODO: calculate the orientation error
+          // Due to the sign starting at 0, the orientation error is -f'(x).
+          // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
+          double epsi = psi - atan(coeffs[1]);
+
+          Eigen::VectorXd state(6);
+          state << px, py, psi, v, cte, epsi;
+
           /*
           * TODO: Calculate steering angle and throttle using MPC.
           *
@@ -101,28 +121,43 @@ int main() {
           double steer_value;
           double throttle_value;
 
+          auto vars = mpc.Solve(state, coeffs);
+
+
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = throttle_value;
 
-          //Display the MPC predicted trajectory 
+          //Display the MPC predicted trajectory
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
+          mpc_x_vals = mpc.mpc_x_vals;
+          mpc_y_vals = mpc.mpc_y_vals;
+
 
           msgJson["mpc_x"] = mpc_x_vals;
           msgJson["mpc_y"] = mpc_y_vals;
 
           //Display the waypoints/reference line
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
+          vector<double> next_x_vals; //= ptsx;
+          vector<double> next_y_vals; //= ptsy;
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
+          next_x_vals.push_back(0);
+          next_x_vals.push_back(10);
+          next_x_vals.push_back(20);
+          next_x_vals.push_back(30);
+
+          next_y_vals.push_back(0);
+          next_y_vals.push_back(5);
+          next_y_vals.push_back(10);
+          next_y_vals.push_back(20);
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
