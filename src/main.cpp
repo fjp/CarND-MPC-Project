@@ -118,10 +118,12 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
-
           auto vars = mpc.Solve(state, coeffs);
+
+          double steer_value = vars[6];
+          double throttle_value = vars[7];
+
+
 
 
           json msgJson;
@@ -149,15 +151,15 @@ int main() {
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
-          next_x_vals.push_back(0);
-          next_x_vals.push_back(10);
-          next_x_vals.push_back(20);
-          next_x_vals.push_back(30);
+          auto vehicle_pts = Eigen::MatrixXd(2,ptsx.size());
+          for (auto i=0; i<ptsx.size() ; ++i){
 
-          next_y_vals.push_back(0);
-          next_y_vals.push_back(5);
-          next_y_vals.push_back(10);
-          next_y_vals.push_back(20);
+              vehicle_pts(0,i) = (ptsx[i] - px) * cos(psi) + (ptsy[i] - py) * sin(psi);
+              vehicle_pts(1,i) = -(ptsx[i] - px) * sin(psi) + (ptsy[i] - py) * cos(psi);
+
+              next_x_vals.push_back(vehicle_pts(0,i));
+              next_y_vals.push_back(vehicle_pts(1,i));
+          }
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
@@ -174,7 +176,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(0));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
