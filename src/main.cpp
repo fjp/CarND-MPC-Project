@@ -92,7 +92,7 @@ int main() {
           double v = j[1]["speed"];
           double steer_angle = j[1]["steering_angle"];
 
-          v *= 0.447; // mph -> m/s
+          //v *= 0.447; // mph -> m/s
 
           // TODO: fit a polynomial to the above x and y coordinates
           double* pptsx = &ptsx[0];
@@ -128,17 +128,20 @@ int main() {
           //double cte = polyeval(coeffs, 0) - 0;
           // cross track error is distance in y, from the vehicle coordinate systems's perspective
           double cte = polyeval(coeffs, 0); // px
+          cout << "cte: " << cte << endl;
 
           // TODO: calculate the orientation error
           // Due to the sign starting at 0, the orientation error is -f'(x).
           // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
           //double epsi = psi - atan(coeffs[1]);
 
-          // epsi is the difference between desired heading and actual
-          double epsi = - atan(coeffs[1]+2*coeffs[2]*px+2*coeffs[3]*px*px);
+          // epsi is the difference between desired heading and actual px = 0
+          //double epsi = atan(coeffs[1]+2*coeffs[2]*px+2*coeffs[3]*px*px);
+          double epsi = - atan(coeffs[1]);
 
           Eigen::VectorXd state(6);
-          state << px, py, psi, v, cte, epsi;
+          //state << px, py, psi, v, cte, epsi;
+          state << 0, 0, 0, v, cte, epsi;
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -197,7 +200,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(0));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
