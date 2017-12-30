@@ -89,10 +89,21 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
-          double v = j[1]["speed"];
-          double steer_angle = j[1]["steering_angle"];
+          double v_mph = j[1]["speed"];
+          // get steering angle and acceleration from simulator
+          // The sign of delta needs to be inverted because you are getting
+          // double delta = j[1]["steering_angle"]; from the simulator.
+          // In the simulator, "left" is negative and "right" is positive,
+          // while psi is measured the other way around, i.e. "left" is negative
+          // (angles are measured counter-clockwise).
+          double delta = j[1]["steering_angle"];
+          delta = - delta;
+          double acceleration = j[1]["throttle"];
+
+          cout << "delta " << delta << endl;
 
           //v *= 0.447; // mph -> m/s
+          double v = v_mph * 0.44704;
 
           // TODO: fit a polynomial to the above x and y coordinates
           double* pptsx = &ptsx[0];
@@ -102,24 +113,22 @@ int main() {
           Eigen::Map<Eigen::VectorXd> pty_map(pptsy,6);
 
           // Transform waypoints from map to vehicle coordinates.
-          auto ptsx_vehicle = Eigen::VectorXd(ptsx.size());
-          auto ptsy_vehicle = Eigen::VectorXd(ptsy.size());
           for (auto i = 0; i < ptsx.size(); ++i){
 
-              ptsx_vehicle(i) = (ptsx[i] - px) * cos(psi) + (ptsy[i] - py) * sin(psi);
-              ptsy_vehicle(i) = -(ptsx[i] - px) * sin(psi) + (ptsy[i] - py) * cos(psi);
+              double shift_x = ptsx[i] - px;
+              double shift_y = ptsy[i] - py;
+
+              ptsx[i] = shift_x * cos(0-psi) - shift_y * sin(0-psi);
+              ptsy[i] = shift_y * cos(0-psi) + shift_x * sin(0-psi);
           }
+          double* ptrx = &ptsx[0];
+          Eigen::Map<Eigen::VectorXd> ptsx_transform(ptrx,6);
+
+          double* ptry = &ptsy[0];
+          Eigen::Map<Eigen::VectorXd> ptsy_transform(ptry,6);
 
           // Fit a polynomial to upcoming waypoints
-          Eigen::VectorXd coeffs = polyfit(ptsx_vehicle, ptsy_vehicle, 3);
-
-          // Put latency into initial state values
-          double dt = 0.1;
-          v *= 0.447; // mph -> m/s
-          //px = v*dt*cos(steer_angle);
-          //py = v*dt*sin(steer_angle);
-          //psi = -v*steer_angle*dt/2.67;
-
+          Eigen::VectorXd coeffs = polyfit(ptsx_transform, ptsy_transform, 3);
 
 
           // TODO: calculate the cross track error in vehicle coordinates
@@ -128,7 +137,7 @@ int main() {
           //double cte = polyeval(coeffs, 0) - 0;
           // cross track error is distance in y, from the vehicle coordinate systems's perspective
           double cte = polyeval(coeffs, 0); // px
-          cout << "cte: " << cte << endl;
+          //cout << "cte: " << cte << endl;
 
           // TODO: calculate the orientation error
           // Due to the sign starting at 0, the orientation error is -f'(x).
@@ -137,11 +146,31 @@ int main() {
 
           // epsi is the difference between desired heading and actual px = 0
           //double epsi = atan(coeffs[1]+2*coeffs[2]*px+2*coeffs[3]*px*px);
-          double epsi = - atan(coeffs[1]);
+          double epsi = -atan(coeffs[1]);
+          //double epsi = psi - atan(coeffs[1] + 2 * px * coeffs[2] + 3 * coeffs[3] *pow(px,2));
+
+
+          // Put latency into initial state values
+          // predict state in 100ms to account for the actuator (simulated) latency
+          double latency = 0.1;
+          double px_latency = v * latency;
+          double py_latency = 0;
+          double psi_latency = v*delta/mpc.Lf * latency;
+          //double epsi_latency = -atan(coeffs[1]) + psi_latency;
+          double epsi_latency = epsi + psi_latency;
+          //cte_latency = polyeval(coeffs,0) + v * sin(epsi) * latency;
+          double cte_latency = cte + v * sin(epsi) * latency;
+          double v_latency = v + acceleration * latency;
+
+          //double v_latency = v + acceleration * latency;
+          //double cte_latency = cte + v * sin(epsi) * latency;
+          //double epsi_latency = epsi + psi_latency;
+
 
           Eigen::VectorXd state(6);
           //state << px, py, psi, v, cte, epsi;
-          state << 0, 0, 0, v, cte, epsi;
+          //state << 0, 0, 0, v, cte, epsi;
+          state << px_latency, py_latency, psi_latency, v_latency, cte_latency, epsi_latency;
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -151,7 +180,15 @@ int main() {
           */
           auto vars = mpc.Solve(state, coeffs);
 
-          double steer_value = -vars[6];
+          // Note if δ is positive we rotate counter-clockwise,
+          // or turn left. In the simulator however, a positive value implies a
+          // right turn and a negative value implies a left turn.
+          // One solution is to leave the update equation as is and multiply
+          // the steering value by -1 before sending it back to the server.
+          // The steering angle solution is given in radians but the simulator
+          // expects the input to be [-1, 1]. Therefore the solution is divided
+          // by 25 degress which corresponds to 0.46332 radians.
+          double steer_value = -vars[6]/deg2rad(25);
           double throttle_value = vars[7];
 
 
@@ -181,8 +218,8 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
           for (auto i = 0; i < ptsx.size() ; ++i){
-              next_x_vals.push_back(ptsx_vehicle(i));
-              next_y_vals.push_back(ptsy_vehicle(i));
+              next_x_vals.push_back(ptsx_transform(i));
+              next_y_vals.push_back(ptsy_transform(i));
           }
 
           msgJson["next_x"] = next_x_vals;
@@ -200,7 +237,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(0));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

@@ -6,7 +6,7 @@
 using CppAD::AD;
 
 // TODO: Set the timestep length and duration
-size_t N = 10;
+size_t N = 12;
 double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
@@ -62,21 +62,23 @@ class FG_eval {
     // any anything you think may be beneficial.
     // The part of the cost based on the reference state.
     for (int t = 0; t < N; t++) {
-      fg[0] += 2000*CppAD::pow(vars[cte_start + t] - ref_cte, 2);
-      fg[0] += 2000*CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
+      fg[0] += 1000*CppAD::pow(vars[cte_start + t] - ref_cte, 2);
+      fg[0] += 3500*CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
       fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += 8500*CppAD::pow(vars[delta_start + t]*vars[epsi_start + t], 2);
     }
 
     // Minimize the use of actuators.
     for (int t = 0; t < N - 1; t++) {
-      fg[0] += 5*CppAD::pow(vars[delta_start + t], 2);
-      fg[0] += 5*CppAD::pow(vars[a_start + t], 2);
+      fg[0] += 100*CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 10*CppAD::pow(vars[a_start + t], 2);
+      fg[0] += 450*CppAD::pow(vars[delta_start + t]*vars[v_start + t], 2);
     }
 
     // Minimize the value gap between sequential actuations.
     for (int t = 0; t < N - 2; t++) {
       //fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
-      fg[0] += 200 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 5000 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 10 * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
@@ -145,7 +147,7 @@ class FG_eval {
 //
 // MPC class definition implementation.
 //
-MPC::MPC() {}
+MPC::MPC() : Lf(2.67) {}
 MPC::~MPC() {}
 
 vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
@@ -206,8 +208,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs) {
   // degrees (values in radians).
   // NOTE: Feel free to change this to something else.
   for (int i = delta_start; i < a_start; i++) {
-    vars_lowerbound[i] = -0.436332*Lf;
-    vars_upperbound[i] = 0.436332*Lf;
+    vars_lowerbound[i] = -0.436332;
+    vars_upperbound[i] = 0.436332;
   }
 
   // Acceleration/decceleration upper and lower limits.
