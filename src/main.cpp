@@ -137,10 +137,10 @@ int main() {
           // TODO: calculate the cross track error in vehicle coordinates
           // The cross track error is calculated by evaluating at polynomial at x, f(x)
           // and subtracting y, which is zero in vehicle coordinates.
-          //double cte = polyeval(coeffs, 0) - 0;
+          double cte = polyeval(coeffs, 0) - 0;
           // To account for the latency, the predicted states are used to calculate the cte.
           // cross track error is distance in y, from the vehicle coordinate systems's perspective
-          double cte = polyeval(coeffs, px) - py;
+          //double cte = polyeval(coeffs, px) - py;
           //cout << "cte: " << cte << endl;
 
           // TODO: calculate the orientation error
@@ -150,8 +150,8 @@ int main() {
 
           // epsi is the difference between desired heading and actual px = 0
           //double epsi = atan(coeffs[1]+2*coeffs[2]*px+2*coeffs[3]*px*px);
-          //double epsi = atan(coeffs[1]);
-          double epsi = psi - atan(coeffs[1] + 2 * px * coeffs[2] + 3 * coeffs[3] *pow(px,2));
+          double epsi = -atan(coeffs[1]);
+          //double epsi = psi - atan(coeffs[1] + 2 * px * coeffs[2] + 3 * coeffs[3] *pow(px,2));
 
 
           Eigen::VectorXd state(6);
