@@ -2,7 +2,7 @@
 
 Model predictive control reframes the task of following a vehicle into an optimization problem. The solution to this optimization is a time ordered set of optimal actuator inpus for steering delta and acceleration a, which can be positive or negative. When these inputs are integrated using an initial state x and the underlying vehicle model f(x), the result is an optimal trajectory. To find this optimal trajectory, a cost function is utilized, which also accounts for the vehicle constraints.
 
-The result of the implemented MPC can be found here:
+The result of the implemented MPC can be seen in the video "CarND-MPC-video.mpg".
 
 
 ## The Model
