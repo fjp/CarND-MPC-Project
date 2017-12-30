@@ -23,7 +23,7 @@ const double Lf = 2.67;
 
 // NOTE: feel free to play around with this
 // or do something completely different
-//double ref_v = 99*0.447; // mph -> m/s;
+//double ref_v = 100*0.447; // mph -> m/s;
 double ref_v = 100; // mph -> m/s;
 double ref_cte = 0.0;
 double ref_epsi = 0.0;
@@ -62,9 +62,9 @@ class FG_eval {
     // any anything you think may be beneficial.
     // The part of the cost based on the reference state.
     for (int t = 0; t < N; t++) {
-      fg[0] += 1000*CppAD::pow(vars[cte_start + t] - ref_cte, 2);
+      fg[0] += 300*CppAD::pow(vars[cte_start + t] - ref_cte, 2);
       fg[0] += 3500*CppAD::pow(vars[epsi_start + t] - ref_epsi, 2);
-      fg[0] += 10*CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += 1*CppAD::pow(vars[v_start + t] - ref_v, 2);
       fg[0] += 8500*CppAD::pow(vars[delta_start + t]*vars[epsi_start + t], 2);
     }
 

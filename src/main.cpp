@@ -90,6 +90,7 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          v *= 0.447; // mph -> m/s
           // get steering angle and acceleration from simulator
           // The sign of delta needs to be inverted because you are getting
           // double delta = j[1]["steering_angle"]; from the simulator.
@@ -100,9 +101,6 @@ int main() {
           delta = - delta;
           double acceleration = j[1]["throttle"];
 
-          cout << "delta" << delta << endl;
-
-          //v *= 0.447; // mph -> m/s
           // Put latency into initial state values
           // predict state in 100ms to account for the actuator (simulated) latency
           double latency = 0.1;
@@ -131,29 +129,20 @@ int main() {
           // Fit a polynomial to upcoming waypoints
           Eigen::VectorXd coeffs = polyfit(ptsx_vehicle, ptsy_vehicle, 3);
 
-
-
-
           // TODO: calculate the cross track error in vehicle coordinates
           // The cross track error is calculated by evaluating at polynomial at x, f(x)
           // and subtracting y, which is zero in vehicle coordinates.
           double cte = polyeval(coeffs, 0) - 0;
-          // To account for the latency, the predicted states are used to calculate the cte.
-          // cross track error is distance in y, from the vehicle coordinate systems's perspective
-          //double cte = polyeval(coeffs, px) - py;
-          //cout << "cte: " << cte << endl;
 
           // TODO: calculate the orientation error
           // Due to the sign starting at 0, the orientation error is -f'(x).
-          // derivative of coeffs[0] + coeffs[1] * x -> coeffs[1]
-          //double epsi = psi - atan(coeffs[1]);
 
           // epsi is the difference between desired heading and actual px = 0
-          //double epsi = atan(coeffs[1]+2*coeffs[2]*px+2*coeffs[3]*px*px);
-          double epsi = -atan(coeffs[1]);
+          // px and psi are zero in vehicle coordinates
+          double epsi = 0 - atan(coeffs[1]);
           //double epsi = psi - atan(coeffs[1] + 2 * px * coeffs[2] + 3 * coeffs[3] *pow(px,2));
 
-
+          // px, py and psi are zero in vehicle coordinates
           Eigen::VectorXd state(6);
           //state << px, py, psi, v, cte, epsi;
           state << 0, 0, 0, v, cte, epsi;
