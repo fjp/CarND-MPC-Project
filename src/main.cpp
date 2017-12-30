@@ -89,7 +89,7 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
-          double v_mph = j[1]["speed"];
+          double v = j[1]["speed"];
           // get steering angle and acceleration from simulator
           // The sign of delta needs to be inverted because you are getting
           // double delta = j[1]["steering_angle"]; from the simulator.
@@ -100,10 +100,17 @@ int main() {
           delta = - delta;
           double acceleration = j[1]["throttle"];
 
-          cout << "delta " << delta << endl;
+          cout << "delta" << delta << endl;
 
           //v *= 0.447; // mph -> m/s
-          double v = v_mph * 0.44704;
+          // Put latency into initial state values
+          // predict state in 100ms to account for the actuator (simulated) latency
+          double latency = 0.1;
+          px = px + v*cos(psi)*latency;
+          py = py + v*sin(psi)*latency;
+          psi = psi + v*delta/mpc.Lf*latency;
+          v = v + acceleration*latency;
+
 
           // TODO: fit a polynomial to the above x and y coordinates
           double* pptsx = &ptsx[0];
@@ -113,30 +120,27 @@ int main() {
           Eigen::Map<Eigen::VectorXd> pty_map(pptsy,6);
 
           // Transform waypoints from map to vehicle coordinates.
+          auto ptsx_vehicle = Eigen::VectorXd(ptsx.size());
+          auto ptsy_vehicle = Eigen::VectorXd(ptsy.size());
           for (auto i = 0; i < ptsx.size(); ++i){
 
-              double shift_x = ptsx[i] - px;
-              double shift_y = ptsy[i] - py;
-
-              ptsx[i] = shift_x * cos(0-psi) - shift_y * sin(0-psi);
-              ptsy[i] = shift_y * cos(0-psi) + shift_x * sin(0-psi);
+              ptsx_vehicle(i) = (ptsx[i] - px) * cos(psi) + (ptsy[i] - py) * sin(psi);
+              ptsy_vehicle(i) = -(ptsx[i] - px) * sin(psi) + (ptsy[i] - py) * cos(psi);
           }
-          double* ptrx = &ptsx[0];
-          Eigen::Map<Eigen::VectorXd> ptsx_transform(ptrx,6);
-
-          double* ptry = &ptsy[0];
-          Eigen::Map<Eigen::VectorXd> ptsy_transform(ptry,6);
 
           // Fit a polynomial to upcoming waypoints
-          Eigen::VectorXd coeffs = polyfit(ptsx_transform, ptsy_transform, 3);
+          Eigen::VectorXd coeffs = polyfit(ptsx_vehicle, ptsy_vehicle, 3);
+
+
 
 
           // TODO: calculate the cross track error in vehicle coordinates
           // The cross track error is calculated by evaluating at polynomial at x, f(x)
           // and subtracting y, which is zero in vehicle coordinates.
           //double cte = polyeval(coeffs, 0) - 0;
+          // To account for the latency, the predicted states are used to calculate the cte.
           // cross track error is distance in y, from the vehicle coordinate systems's perspective
-          double cte = polyeval(coeffs, 0); // px
+          double cte = polyeval(coeffs, px) - py;
           //cout << "cte: " << cte << endl;
 
           // TODO: calculate the orientation error
@@ -146,31 +150,13 @@ int main() {
 
           // epsi is the difference between desired heading and actual px = 0
           //double epsi = atan(coeffs[1]+2*coeffs[2]*px+2*coeffs[3]*px*px);
-          double epsi = -atan(coeffs[1]);
-          //double epsi = psi - atan(coeffs[1] + 2 * px * coeffs[2] + 3 * coeffs[3] *pow(px,2));
-
-
-          // Put latency into initial state values
-          // predict state in 100ms to account for the actuator (simulated) latency
-          double latency = 0.1;
-          double px_latency = v * latency;
-          double py_latency = 0;
-          double psi_latency = v*delta/mpc.Lf * latency;
-          //double epsi_latency = -atan(coeffs[1]) + psi_latency;
-          double epsi_latency = epsi + psi_latency;
-          //cte_latency = polyeval(coeffs,0) + v * sin(epsi) * latency;
-          double cte_latency = cte + v * sin(epsi) * latency;
-          double v_latency = v + acceleration * latency;
-
-          //double v_latency = v + acceleration * latency;
-          //double cte_latency = cte + v * sin(epsi) * latency;
-          //double epsi_latency = epsi + psi_latency;
+          //double epsi = atan(coeffs[1]);
+          double epsi = psi - atan(coeffs[1] + 2 * px * coeffs[2] + 3 * coeffs[3] *pow(px,2));
 
 
           Eigen::VectorXd state(6);
           //state << px, py, psi, v, cte, epsi;
-          //state << 0, 0, 0, v, cte, epsi;
-          state << px_latency, py_latency, psi_latency, v_latency, cte_latency, epsi_latency;
+          state << 0, 0, 0, v, cte, epsi;
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -218,8 +204,8 @@ int main() {
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
           for (auto i = 0; i < ptsx.size() ; ++i){
-              next_x_vals.push_back(ptsx_transform(i));
-              next_y_vals.push_back(ptsy_transform(i));
+              next_x_vals.push_back(ptsx_vehicle(i));
+              next_y_vals.push_back(ptsy_vehicle(i));
           }
 
           msgJson["next_x"] = next_x_vals;
