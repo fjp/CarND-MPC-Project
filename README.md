@@ -1,3 +1,13 @@
+# Udacity Model Predictive Control Project - Self Driving Car Nanodegree
+
+The goal of this project is to navigate a track in a Udacity-provided [simulator](https://github.com/udacity/self-driving-car-sim/releases), 
+which communicates telemetry and track waypoint data via websocket, 
+by sending steering and acceleration commands back to the simulator. 
+The solution must be robust to 100ms latency, as one may encounter in real-world application.
+
+This solution, as the Nanodegree lessons suggest, makes use of the IPOPT and CPPAD libraries to calculate an optimal trajectory and its associated actuation commands in order to minimize error with a third-degree polynomial fit to the given waypoints. The optimization considers only a short duration's worth of waypoints, and produces a trajectory for that duration based upon a model of the vehicle's kinematics and a cost function based mostly on the vehicle's cross-track error (roughly the distance from the track waypoints) and orientation angle error, with other cost factors included to improve performance.
+
+
 # Model Predictive Control
 
 Model predictive control reframes the task of following a vehicle into an optimization problem. The solution to this optimization is a time ordered set of optimal actuator inpus for steering delta and acceleration a, which can be positive or negative. When these inputs are integrated using an initial state x and the underlying vehicle model f(x), the result is an optimal trajectory. To find this optimal trajectory, a cost function is utilized, which also accounts for the vehicle constraints.
