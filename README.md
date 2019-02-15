@@ -105,8 +105,10 @@ for (auto i = 0; i < ptsx.size(); ++i){
 
 A polynomial is fitted to the transformed waypoints in local vehicle coordinates.
 
+```
 // Fit a polynomial to upcoming waypoints
 Eigen::VectorXd coeffs = polyfit(ptsx_vehicle, ptsy_vehicle, 3);
+```
 
 These polynomial coefficients are used to calculate the cross-track error `cte` (main.cpp line 135) and the orientation error `epsi` (main.cpp line 142).
 
